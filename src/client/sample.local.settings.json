@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+    "AzureWebJobsStorage": "https://<storage>.queue.core.windows.net",
+    "QueueStorageAccountUrl": "https://<storage>.queue.core.windows.net"
+  },
+  "Host": {
+    "LocalHttpPort": 7073,
+    "CORS": "*"
+  }
+}
