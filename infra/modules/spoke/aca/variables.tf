@@ -26,6 +26,16 @@ variable "storage_key" {
   description = "Azure Storage Key"
   type        = string
 }
+
+variable "storage_queue_url" {
+  description = "value of the storage queue url"
+  type        = string
+}
+
+variable "storage_id" {
+  description = "value of the storage id"
+  type        = string
+}
 variable "appinsights_key" {
   description = "value of the appinsights key"
   type        = string
@@ -70,99 +80,4 @@ variable "tags" {
   default = {
     environment = "dev"
   }
-}
-
-
-##########################################################################################################
-# This is an overkilled way to create ACA apps :) - The benefit is that it avoids repeating the same code
-# The idea is to have a list of objects, each object is an app
-# you only need to define the non default values for each app
-# Consider just duplicating whatever you need. Hardcoding is not that bad, and very simple to read :)
-##########################################################################################################
-
-variable "container_apps" {
-  description = "Specifies the container apps in the managed environment."
-  # First we define all the pottential parameters that we could use
-  type = list(object({
-    name                           = string
-    revision_mode                  = optional(string)
-    ingress                        = optional(object({
-      allow_insecure_connections   = optional(bool)
-      external_enabled             = optional(bool)
-      target_port                  = optional(number)
-      transport                    = optional(string)
-      traffic_weight               = optional(list(object({
-        label                      = optional(string)
-        latest_revision            = optional(bool)
-        revision_suffix            = optional(string)
-        percentage                 = optional(number)
-      })))
-    }))
-    secrets                        = optional(list(object({
-      name                         = string
-      value                        = string
-    })))
-    template                       = object({
-      containers                   = list(object({
-        name                       = string
-        image                      = string
-        args                       = optional(list(string))
-        command                    = optional(list(string))
-        cpu                        = optional(number)
-        memory                     = optional(string)
-        env                        = optional(list(object({
-          name                     = string
-          secret_name              = optional(string)
-          value                    = optional(string)
-        })))
-      }))
-      min_replicas                 = optional(number)
-      max_replicas                 = optional(number)
-      revision_suffix              = optional(string)
-    })
-  }))
-  default                          = [
-  # This is application 1: Client
-  {
-    name                           = "client"
-    ingress                        = {
-      external_enabled             = true
-      target_port                  = 3000
-      transport                    = "http"
-      traffic_weight               = [{
-        label                      = "blue"
-        latest_revision            = true
-        revision_suffix            = "blue"
-        percentage                 = 100
-      }]
-    }
-    template                       = {
-      containers                   = [{
-        name                       = "hello-k8s-node"
-        image                      = "crgaracaeuss1acr.azurecr.io/client:latest"
-        cpu                        = 0.5
-        memory                     = "1Gi"
-        env                        = [{
-          name                     = "APP_PORT"
-          value                    = 3000
-        }]
-      }]
-      min_replicas                 = 1
-      max_replicas                 = 1
-    }
-  },
-  # This is application 2: Chunker
-  {
-    name                           = "pythonapp"
-    template                       = {
-      containers                   = [{
-        name                       = "hello-k8s-python"
-        image                      = "dapriosamples/hello-k8s-python:latest"
-        cpu                        = 0.5
-        memory                     = "1Gi"
-      }]
-      min_replicas                 = 1
-      max_replicas                 = 1
-    }
-  }]
 }

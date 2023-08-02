@@ -8,6 +8,11 @@ resource "azurerm_storage_account" "storage" {
   account_replication_type = "LRS"
 }
 
+resource "azurerm_storage_queue" "chunkerqueue" {
+  name                 = "chunkerqueue"
+  storage_account_name = azurerm_storage_account.storage.name
+}
+
 resource "azurerm_private_endpoint" "endpoint" {
   name                = "${var.prefix}-stor-pe"
   resource_group_name = var.resource_group_name
@@ -28,4 +33,3 @@ resource "azurerm_private_dns_a_record" "dns_a" {
   ttl                 = 1
   records             = [azurerm_private_endpoint.endpoint.private_service_connection.0.private_ip_address]
 }
-

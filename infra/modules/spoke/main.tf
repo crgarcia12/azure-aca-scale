@@ -69,6 +69,8 @@ module "aca" {
   resource_group_name          = azurerm_resource_group.spoke_rg.name
   storage_name                 = module.storage.storage_name
   storage_key                  = module.storage.storage_key
+  storage_queue_url            = module.storage.storage_queue_url
+  storage_id                   = module.storage.storage_id
   appinsights_key              = module.appinsights.instrumentation_key
   appinsights_connectionstring = module.appinsights.connection_string
   acr_id                       = module.acr.acr_id

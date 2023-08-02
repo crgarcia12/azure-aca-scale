@@ -1,5 +1,8 @@
 # Mostly taken from here: https://techcommunity.microsoft.com/t5/fasttrack-for-azure/can-i-create-an-azure-container-apps-in-terraform-yes-you-can/ba-p/3570694
 
+locals {
+  revision_name = "v6"
+}
 resource "azurerm_user_assigned_identity" "aca_identity" {
   resource_group_name = var.resource_group_name
   location            = var.location
@@ -13,6 +16,11 @@ resource "azurerm_role_assignment" "aca_identity_assignment" {
   principal_id         = azurerm_user_assigned_identity.aca_identity.principal_id
 }
 
+resource "azurerm_role_assignment" "aca_identity_storage_assignment" {
+  scope                = var.storage_id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.aca_identity.principal_id
+}
 
 resource "azurerm_container_app_environment" "managed_environment" {
   name                           = "${var.prefix}-aca-env"
@@ -22,7 +30,7 @@ resource "azurerm_container_app_environment" "managed_environment" {
   infrastructure_subnet_id       = var.subnet_id
   internal_load_balancer_enabled = false
   tags                           = var.tags
-  
+
   lifecycle {
     ignore_changes = [
       tags
@@ -30,10 +38,8 @@ resource "azurerm_container_app_environment" "managed_environment" {
   }
 }
 
-resource "azurerm_container_app" "container_app" {
-  for_each                     = {for app in var.container_apps: app.name => app}
-
-  name                         = each.key
+resource "azurerm_container_app" "client_app" {
+  name                         = "clientapp"
   resource_group_name          = var.resource_group_name
   container_app_environment_id = azurerm_container_app_environment.managed_environment.id
   tags                         = var.tags
@@ -44,63 +50,45 @@ resource "azurerm_container_app" "container_app" {
     identity_ids = [azurerm_user_assigned_identity.aca_identity.id]
   }
 
+  ingress {
+    external_enabled = true
+    target_port      = 3000
+    transport        = "http"
+    traffic_weight {
+      label           = local.revision_name
+      latest_revision = true
+      revision_suffix = local.revision_name
+      percentage      = 100
+    }
+  }
+
+  registry {
+    server   = var.acr_url
+    identity = azurerm_user_assigned_identity.aca_identity.id
+  }
+
   template {
-    dynamic "container" {
-      for_each                   = coalesce(each.value.template.containers, [])
-      content {
-        name                     = container.value.name
-        image                    = container.value.image
-        args                     = try(container.value.args, null)
-        command                  = try(container.value.command, null)
-        cpu                      = container.value.cpu
-        memory                   = container.value.memory
-        
-        dynamic "env" {
-          for_each               = coalesce(container.value.env, [])
-          content {
-            name                 = env.value.name
-            secret_name          = try(env.value.secret_name, null)
-            value                = try(env.value.value, null)
-          }
-        }
+    container {
+      name   = "client"
+      image  = "crgaracaeuss1acr.azurecr.io/client:latest"
+      cpu    = 0.5
+      memory = "1Gi"
+
+      env {
+        name  = "APP_PORT"
+        value = 3000
+      }
+      env {
+        name  = "QUEUE_STORAGE_ACCOUNT_URL"
+        value = var.storage_queue_url
+      }
+      env {
+        name = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.aca_identity.client_id
       }
     }
-    min_replicas                 = try(each.value.template.min_replicas, null)
-    max_replicas                 = try(each.value.template.max_replicas, null)
-    revision_suffix              = try(each.value.template.revision_suffix, null)
-  }
-
- dynamic "ingress" {
-    for_each                     = each.value.ingress != null ? [each.value.ingress] : []
-    content {
-      allow_insecure_connections = try(ingress.value.allow_insecure_connections, null)
-      external_enabled           = try(ingress.value.external_enabled, null)
-      target_port                = ingress.value.target_port
-      transport                  = ingress.value.transport
-
-      dynamic "traffic_weight"  {
-        for_each                 = coalesce(ingress.value.traffic_weight, [])
-        content {
-          label                  = traffic_weight.value.label
-          latest_revision        = traffic_weight.value.latest_revision
-          revision_suffix        = traffic_weight.value.revision_suffix
-          percentage             = traffic_weight.value.percentage
-        }
-      }
-    }
-  }
-
-  dynamic "secret" {
-    for_each                     = each.value.secrets != null ? [each.value.secrets] : []
-    content {
-      name                       = secret.value.name
-      value                      = secret.value.value
-    }
-  }
-
-  lifecycle {
-    ignore_changes = [
-      tags
-    ]
+    min_replicas    = 1
+    max_replicas    = 1
+    revision_suffix = local.revision_name
   }
 }
