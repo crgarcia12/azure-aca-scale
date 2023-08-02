@@ -76,6 +76,6 @@ module "aca" {
   acr_username                 = module.acr.acr_username
   acr_password                 = module.acr.acr_password
   loganalytics_id              = module.appinsights.loganalytics_id
-  subnet_id                    = module.spoke_vnet.vnet_aks_subnet_id
+  subnet_id                    = module.spoke_vnet.vnet_aca_subnet_id
 
 }

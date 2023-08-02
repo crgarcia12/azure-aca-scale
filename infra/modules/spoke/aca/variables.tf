@@ -66,6 +66,12 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "tags" {
+  default = {
+    environment = "dev"
+  }
+}
+
 
 ##########################################################################################################
 # This is an overkilled way to create ACA apps :) - The benefit is that it avoids repeating the same code
@@ -133,7 +139,7 @@ variable "container_apps" {
     template                       = {
       containers                   = [{
         name                       = "hello-k8s-node"
-        image                      = "dapriosamples/hello-k8s-node:latest"
+        image                      = "crgaracaeuss1acr.azurecr.io/client:latest"
         cpu                        = 0.5
         memory                     = "1Gi"
         env                        = [{

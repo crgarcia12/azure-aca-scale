@@ -1,1 +1,3 @@
-local.settings.json
+.git*
+**/*.pyc
+.venv/

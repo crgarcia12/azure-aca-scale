@@ -206,7 +206,7 @@ resource "azurerm_subnet" "aca" {
   name                 = "aca"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.${var.ip_second_octet}.8.0/24"]
+  address_prefixes     = ["10.${var.ip_second_octet}.8.0/22"]
 }
 
 resource "azurerm_subnet_network_security_group_association" "aca-nsg" {
@@ -218,6 +218,8 @@ resource "azurerm_subnet_route_table_association" "aca-udr" {
   subnet_id      = azurerm_subnet.aca.id
   route_table_id = azurerm_route_table.udr.id
 }
+
+// Next one is .12.0/24
 
 #################################################
 #      VNET

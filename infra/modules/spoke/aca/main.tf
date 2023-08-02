@@ -10,7 +10,7 @@ resource "azurerm_user_assigned_identity" "aca_identity" {
 resource "azurerm_role_assignment" "aca_identity_assignment" {
   scope                = var.acr_id
   role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.function_identity.principal_id
+  principal_id         = azurerm_user_assigned_identity.aca_identity.principal_id
 }
 
 
@@ -20,7 +20,7 @@ resource "azurerm_container_app_environment" "managed_environment" {
   resource_group_name            = var.resource_group_name
   log_analytics_workspace_id     = var.loganalytics_id
   infrastructure_subnet_id       = var.subnet_id
-  internal_load_balancer_enabled = true
+  internal_load_balancer_enabled = false
   tags                           = var.tags
   
   lifecycle {
