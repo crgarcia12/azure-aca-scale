@@ -27,7 +27,7 @@ module "spoke_vm" {
 }
 
 module "aks" {
-  count               = 0
+  count               = 1
   source              = "./aks"
   prefix              = var.prefix
   location            = var.location
@@ -38,8 +38,8 @@ module "aks" {
   ebpf_data_plane     = var.aks_ebpf_data_plane
 }
 
-module "appinsights" {
-  source              = "./appinsights"
+module "monitor" {
+  source              = "./monitor"
   prefix              = var.prefix
   location            = var.location
   resource_group_name = azurerm_resource_group.spoke_rg.name
@@ -71,13 +71,22 @@ module "aca" {
   storage_key                  = module.storage.storage_key
   storage_queue_url            = module.storage.storage_queue_url
   storage_id                   = module.storage.storage_id
-  appinsights_key              = module.appinsights.instrumentation_key
-  appinsights_connectionstring = module.appinsights.connection_string
+  storage_connection_string = module.storage.storage_connection_string
+  appinsights_key              = module.monitor.instrumentation_key
+  appinsights_connectionstring = module.monitor.connection_string
   acr_id                       = module.acr.acr_id
   acr_url                      = module.acr.acr_url
   acr_username                 = module.acr.acr_username
   acr_password                 = module.acr.acr_password
-  loganalytics_id              = module.appinsights.loganalytics_id
+  loganalytics_id              = module.monitor.loganalytics_id
   subnet_id                    = module.spoke_vnet.vnet_aca_subnet_id
+}
 
+module "grafana" {
+  source              = "./grafana"
+  prefix              = var.prefix
+  location            = var.location
+  resource_group_name = azurerm_resource_group.spoke_rg.name
+  prometheus_id       = module.monitor.prometheus_id
+  grafana_admin_email = var.grafana_admin_email
 }

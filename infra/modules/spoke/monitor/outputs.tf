@@ -10,3 +10,7 @@ output "connection_string" {
 output "loganalytics_id" {
   value = azurerm_log_analytics_workspace.la.id
 }
+
+output "prometheus_id" {
+  value = azurerm_monitor_workspace.prometheus.id
+}

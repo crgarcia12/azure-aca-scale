@@ -39,6 +39,10 @@ variable "ssh_password" {
   sensitive = true
 }
 
+variable "grafana_admin_email" {
+  type      = string
+  sensitive = true
+}
 ################################
 #         Hub
 ################################

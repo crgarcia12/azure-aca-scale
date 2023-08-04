@@ -36,6 +36,13 @@ variable "storage_id" {
   description = "value of the storage id"
   type        = string
 }
+
+variable "storage_connection_string" {
+  description = "value of the storage connection string"
+  type        = string
+}
+
+
 variable "appinsights_key" {
   description = "value of the appinsights key"
   type        = string

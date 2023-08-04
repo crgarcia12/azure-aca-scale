@@ -1,7 +1,7 @@
 # Mostly taken from here: https://techcommunity.microsoft.com/t5/fasttrack-for-azure/can-i-create-an-azure-container-apps-in-terraform-yes-you-can/ba-p/3570694
 
 locals {
-  revision_name = "v15"
+  revision_name = "v16"
 }
 resource "azurerm_user_assigned_identity" "aca_identity" {
   resource_group_name = var.resource_group_name
@@ -70,7 +70,7 @@ resource "azurerm_container_app" "client_app" {
   template {
     container {
       name   = "client"
-      image  = "crgaracaeuss1acr.azurecr.io/client:latest"
+      image  = "crgarlegeuss1acr.azurecr.io/client:latest"
       cpu    = 0.5
       memory = "1Gi"
 
@@ -123,10 +123,19 @@ resource "azurerm_container_app" "chunker_app" {
     identity = azurerm_user_assigned_identity.aca_identity.id
   }
 
+  secret {
+    name = "storage-connection-string"
+    value = var.storage_connection_string
+  }
+
   template {
+    revision_suffix = local.revision_name
+    min_replicas    = 1
+    max_replicas    = 1
+
     container {
       name   = "chunker"
-      image  = "crgaracaeuss1acr.azurecr.io/chunker:latest"
+      image  = "crgarlegeuss1acr.azurecr.io/chunker:latest"
       cpu    = 0.5
       memory = "1Gi"
 
@@ -143,8 +152,7 @@ resource "azurerm_container_app" "chunker_app" {
         value = azurerm_user_assigned_identity.aca_identity.client_id
       }
     }
-    min_replicas    = 1
-    max_replicas    = 1
-    revision_suffix = local.revision_name
+
+
   }
 }

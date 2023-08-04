@@ -1,6 +1,6 @@
 variable "prefix" {
   type    = string
-  default = "crgar-aca"
+  default = "crgar-leg"
 }
 variable "SSH_USERNAME" {
   type      = string
@@ -8,6 +8,10 @@ variable "SSH_USERNAME" {
   default   = "adminuser"
 }
 variable "SSH_PASSWORD" {
+  type      = string
+  sensitive = true
+}
+variable "GRAPHANA_ADMIN_EMAIL" {
   type      = string
   sensitive = true
 }

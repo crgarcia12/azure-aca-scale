@@ -48,6 +48,7 @@ module "spoke_eus_s1" {
   ssh_password                          = var.SSH_PASSWORD
   fw_vip                                = module.hub-eus.fw_vip
   privatelink_storageblob_dns_zone_name = module.hub-eus.privatelink_storageblob_dns_zone_name
+  grafana_admin_email                   = var.GRAPHANA_ADMIN_EMAIL
   depends_on = [
     module.hub-eus
   ]

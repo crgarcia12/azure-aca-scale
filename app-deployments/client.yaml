@@ -1,0 +1,214 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chunker
+---
+# TODO: IN PROGRESS
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    azure.workload.identity/client-id: 8650d324-6bba-47eb-b137-ec152aa03da3
+  labels:
+    azure.workload.identity/use: "true"
+  name: workload-identity-serv-acct
+  namespace: demoapp-ns
+---
+# TODO: IN PROGRESS
+# apiVersion: secrets-store.csi.x-k8s.io/v1
+# kind: SecretProviderClass
+# metadata:
+#   name: azure-kvname-workload-identity # needs to be unique per namespace
+#   namespace: demoapp-ns
+# spec:
+#   provider: azure
+#   parameters:
+#     usePodIdentity: "false"
+#     useVMManagedIdentity: "false"          
+#     clientID: "8650d324-6bba-47eb-b137-ec152aa03da3" # Setting this to use workload identity
+#     keyvaultName: crgar-aks-advanced-kv        # Set to the name of your key vault
+#     cloudName: ""                          # [OPTIONAL for Azure] if not provided, the Azure environment defaults to AzurePublicCloud
+#     objects:  |
+#       array:
+#         - |
+#           objectName: SomeSecret
+#           objectType: secret              # object types: secret, key, or cert
+#           objectVersion: ""               # [OPTIONAL] object versions, default to latest if empty
+#         - |
+#           objectName: SomeSecret2
+#           objectType: secret
+#           objectVersion: ""
+#     tenantId: "b317d745-eb97-4068-9a14-a2e967b0b72e"        # The tenant ID of the key vault
+---    
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: demoapp-storage-class
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: Standard_LRS
+reclaimPolicy: Retain
+#volumeBindingMode: WaitForFirstConsumer
+#allowVolumeExpansion: true
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: demoapp-ns
+  name: demoapp-statefulset
+spec:
+  serviceName: demoapp-internal # Headless service for resolving individual pod DNS
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demoapp-app
+  volumeClaimTemplates:
+  - metadata:
+      name: disk-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "demoapp-storage-class"
+      resources:
+        requests:
+          storage: 1Mi
+  template:
+    metadata:
+      labels:
+        app: demoapp-app
+    spec:
+      serviceAccountName: workload-identity-serv-acct
+      containers:
+      - name: demoapp
+        image: crgaraksadvancedacr.azurecr.io/demoapp:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: disk-volume
+          mountPath: "/mnt/demoappfiles"
+        # - name: secrets-store-volume
+        #   mountPath: "/mnt/secrets"
+        #   readOnly: true
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+      volumes:
+      - name: disk-volume
+        persistentVolumeClaim:
+          claimName: demoapp-storage-claim
+      # - name: secrets-store-volume
+      #   csi:
+      #     driver: secrets-store.csi.k8s.io
+      #     readOnly: true
+      #     volumeAttributes:
+      #       secretProviderClass: "azure-kvname-workload-identity"
+      imagePullSecrets:
+      - name: crgaraksadvancedacr
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - switzerlandnorth-1
+                - switzerlandnorth-2
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - userpool1
+      tolerations:
+      - key: "app"
+        operator: "Equal"
+        value: "demoapp"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: demoapp-ns
+  name: demoapp-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: demoapp-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: demoapp-ns
+  name: demoapp-internal
+spec:
+  clusterIP: None
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: demoapp-app
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: quotasapp-deployment
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: quotasapp-app
+#   template:
+#     metadata:
+#       labels:
+#         app: quotasapp-app
+#     spec:
+#       containers:
+#       - name: quotasapp-container
+#         image: crgaraksadvancedacr.azurecr.io/demoapp:latest
+#         ports:
+#         - containerPort: 80
+#         resources:
+#           limits:
+#             cpu: "100m"
+#       tolerations:
+#       - key: "app"
+#         operator: "Equal"
+#         value: "demoapp"
+#         effect: "NoSchedule"
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: quotasapp-service
+# spec:
+#   selector:
+#     app: quotasapp-app
+#   ports:
+#   - name: http
+#     port: 80
+#     targetPort: 80
+#   type: LoadBalancer
